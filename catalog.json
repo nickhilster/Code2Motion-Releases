@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "experiences": [
+    {
+      "id": "pain-ter",
+      "version": "1.0.0",
+      "title": "Pain-ter",
+      "description": "A tactile canvas for making layered abstract paintings with light, color, and motion.",
+      "license": "MIT",
+      "sizeBytes": 28622,
+      "sha256": "01846c2cd2f73a7802c48f8d338234c534b5aca83a0eeee727d058715fd49418",
+      "package": "pain-ter-1.0.0.c2m"
+    },
+    {
+      "id": "audiorbits",
+      "version": "1.0.0",
+      "title": "AudiOrbits",
+      "description": "A deep-space field of orbital forms that responds to locally selected audio.",
+      "license": "GPL-3.0-only",
+      "sizeBytes": 740517,
+      "sha256": "4e36548c1b9fec96e5b798f79d1f8275291f922782f02c486b3b285fe61398c6",
+      "package": "audiorbits-1.0.0.c2m"
+    }
+  ]
+}
