@@ -78,15 +78,16 @@ jobs:
           ARCHITECTURE: ${{ matrix.architecture }}
         run: |
           pnpm tauri build --ci --no-sign --bundles dmg --target "$TARGET"
+          version="${RELEASE_TAG#v}"
           image="$(find "src-tauri/target/$TARGET/release/bundle/dmg" -maxdepth 1 -name '*.dmg' -print -quit)"
           test -n "$image"
           hdiutil verify "$image"
-          cp "$image" "$RUNNER_TEMP/Code2Motion-${RELEASE_TAG}-macos-${ARCHITECTURE}.dmg"
+          cp "$image" "$RUNNER_TEMP/Code2Motion-${version}-macos-${ARCHITECTURE}.dmg"
 
       - uses: actions/upload-artifact@v4
         with:
           name: Code2Motion-macOS-${{ matrix.architecture }}
-          path: ${{ runner.temp }}/Code2Motion-${{ inputs.release_tag }}-macos-${{ matrix.architecture }}.dmg
+          path: ${{ runner.temp }}/Code2Motion-*.dmg
           if-no-files-found: error
           retention-days: 7
 
@@ -119,6 +120,18 @@ jobs:
           release = json.loads(os.environ["RELEASE_JSON"])
           destination = Path(os.environ["RELEASE_DIR"])
           for asset in release["assets"]:
+              if asset["name"].endswith(".dmg") and "macos-" in asset["name"]:
+                  subprocess.run(
+                      [
+                          "gh",
+                          "api",
+                          "--method",
+                          "DELETE",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/releases/assets/{asset['id']}",
+                      ],
+                      check=True,
+                  )
+                  continue
               target = destination / asset["name"]
               with target.open("wb") as output:
                   subprocess.run(
@@ -133,7 +146,8 @@ jobs:
                       check=True,
                   )
           PY
-          cp "$RUNNER_TEMP"/macos-assets/Code2Motion-"$RELEASE_TAG"-macos-*.dmg "$RUNNER_TEMP/release-assets/"
+          version="${RELEASE_TAG#v}"
+          cp "$RUNNER_TEMP"/macos-assets/Code2Motion-"$version"-macos-*.dmg "$RUNNER_TEMP/release-assets/"
           cd "$RUNNER_TEMP/release-assets"
           python3 -c 'from pathlib import Path; Path("SHA256SUMS").unlink()'
           python3 - <<'PY'
@@ -148,7 +162,7 @@ jobs:
           sha256sum --check SHA256SUMS
           checksum_asset_id="$(printf '%s' "$release_json" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(next(a["id"] for a in r["assets"] if a["name"] == "SHA256SUMS"))')"
           gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$checksum_asset_id"
-          for asset in Code2Motion-"$RELEASE_TAG"-macos-*.dmg; do
+          for asset in Code2Motion-"$version"-macos-*.dmg; do
             curl --fail --silent --show-error \
               -X POST "$upload_url?name=$asset" \
               -H "Authorization: Bearer $GH_TOKEN" \
