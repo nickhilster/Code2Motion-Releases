@@ -1,0 +1,162 @@
+name: Build macOS desktop beta assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing draft Code2Motion desktop beta release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: macos-beta-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: macOS ${{ matrix.architecture }}
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: arm64
+            target: aarch64-apple-darwin
+          - architecture: x64
+            target: x86_64-apple-darwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm the target release is still a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == true)')"
+          test -n "$release_json"
+
+      - name: Download the desktop source archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/source"
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == true)')"
+          source_asset_id="$(printf '%s' "$release_json" | python3 -c 'import json,sys; r=json.load(sys.stdin); n="code2motion-desktop-"+r["tag_name"]+"-source.tar.gz"; print(next(a["id"] for a in r["assets"] if a["name"] == n))')"
+          gh api "repos/$GITHUB_REPOSITORY/releases/assets/$source_asset_id" \
+            --header 'Accept: application/octet-stream' > "$RUNNER_TEMP/source/source.tar.gz"
+          mkdir -p "$RUNNER_TEMP/work"
+          tar -xzf "$RUNNER_TEMP/source/source.tar.gz" -C "$RUNNER_TEMP/work"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install desktop dependencies
+        working-directory: ${{ runner.temp }}/work/desktop
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and verify the disk image
+        working-directory: ${{ runner.temp }}/work/desktop
+        env:
+          CI: "true"
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          TARGET: ${{ matrix.target }}
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          pnpm tauri build --ci --no-sign --bundles dmg --target "$TARGET"
+          image="$(find "src-tauri/target/$TARGET/release/bundle/dmg" -maxdepth 1 -name '*.dmg' -print -quit)"
+          test -n "$image"
+          hdiutil verify "$image"
+          cp "$image" "$RUNNER_TEMP/Code2Motion-${RELEASE_TAG}-macos-${ARCHITECTURE}.dmg"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Code2Motion-macOS-${{ matrix.architecture }}
+          path: ${{ runner.temp }}/Code2Motion-${{ inputs.release_tag }}-macos-${{ matrix.architecture }}.dmg
+          if-no-files-found: error
+          retention-days: 7
+
+  attach-to-draft-release:
+    name: Attach macOS installers and refresh checksums
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/macos-assets
+          merge-multiple: true
+
+      - name: Download draft release assets and add macOS installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == true)')"
+          test -n "$release_json"
+          release_id="$(printf '%s' "$release_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+          upload_url="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id" --jq '.upload_url' | sed 's/{?name,label}//')"
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          RELEASE_JSON="$release_json" RELEASE_ID="$release_id" RELEASE_DIR="$RUNNER_TEMP/release-assets" GITHUB_REPOSITORY="$GITHUB_REPOSITORY" python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          release = json.loads(os.environ["RELEASE_JSON"])
+          destination = Path(os.environ["RELEASE_DIR"])
+          for asset in release["assets"]:
+              target = destination / asset["name"]
+              with target.open("wb") as output:
+                  subprocess.run(
+                      [
+                          "gh",
+                          "api",
+                          f"repos/{os.environ['GITHUB_REPOSITORY']}/releases/assets/{asset['id']}",
+                          "--header",
+                          "Accept: application/octet-stream",
+                      ],
+                      stdout=output,
+                      check=True,
+                  )
+          PY
+          cp "$RUNNER_TEMP"/macos-assets/Code2Motion-"$RELEASE_TAG"-macos-*.dmg "$RUNNER_TEMP/release-assets/"
+          cd "$RUNNER_TEMP/release-assets"
+          python3 -c 'from pathlib import Path; Path("SHA256SUMS").unlink()'
+          python3 - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+
+          checksum_file = Path("SHA256SUMS")
+          files = sorted(path for path in Path(".").iterdir() if path.is_file() and path != checksum_file)
+          lines = [f"{sha256(path.read_bytes()).hexdigest()}  {path.name}" for path in files]
+          checksum_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+          sha256sum --check SHA256SUMS
+          checksum_asset_id="$(printf '%s' "$release_json" | python3 -c 'import json,sys; r=json.load(sys.stdin); print(next(a["id"] for a in r["assets"] if a["name"] == "SHA256SUMS"))')"
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$checksum_asset_id"
+          for asset in Code2Motion-"$RELEASE_TAG"-macos-*.dmg; do
+            curl --fail --silent --show-error \
+              -X POST "$upload_url?name=$asset" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'Content-Type: application/octet-stream' \
+              --data-binary "@$asset" > /dev/null
+          done
+          curl --fail --silent --show-error \
+            -X POST "$upload_url?name=SHA256SUMS" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/octet-stream' \
+            --data-binary @SHA256SUMS > /dev/null
