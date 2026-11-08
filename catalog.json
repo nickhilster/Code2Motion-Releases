@@ -7,8 +7,18 @@
       "title": "Pain-ter",
       "description": "A tactile canvas for making layered abstract paintings with light, color, and motion.",
       "license": "MIT",
-      "sizeBytes": 28622,
-      "sha256": "01846c2cd2f73a7802c48f8d338234c534b5aca83a0eeee727d058715fd49418",
+      "supportedPlatforms": [
+        "linux",
+        "windows",
+        "macos"
+      ],
+      "presentation": {
+        "interactive": true,
+        "ambient": true,
+        "wallpaper": false
+      },
+      "sizeBytes": 28764,
+      "sha256": "e5cd0e645d57f4bd431e42509b8120ec139e906fd29e2323f6924b4716c1d76d",
       "package": "pain-ter-1.0.0.c2m"
     },
     {
@@ -17,9 +27,77 @@
       "title": "AudiOrbits",
       "description": "A deep-space field of orbital forms that responds to locally selected audio.",
       "license": "GPL-3.0-only",
-      "sizeBytes": 740517,
-      "sha256": "4e36548c1b9fec96e5b798f79d1f8275291f922782f02c486b3b285fe61398c6",
+      "supportedPlatforms": [
+        "linux"
+      ],
+      "presentation": {
+        "interactive": true,
+        "ambient": false,
+        "wallpaper": false
+      },
+      "sizeBytes": 740557,
+      "sha256": "f44b2739f41eab54f64edd4060a53376341cd7c110bde1fa60368e6e09646424",
       "package": "audiorbits-1.0.0.c2m"
+    },
+    {
+      "id": "nebula-core",
+      "version": "1.0.0",
+      "title": "Nebula Core",
+      "description": "A WebGL black-hole nebula with palette, motion, particle and glow controls.",
+      "license": "MIT",
+      "supportedPlatforms": [
+        "linux",
+        "windows",
+        "macos"
+      ],
+      "presentation": {
+        "interactive": true,
+        "ambient": false,
+        "wallpaper": false
+      },
+      "sizeBytes": 20262,
+      "sha256": "5306f6ff585f99c62034c477efa88c6ce715ba7275b70504c4c3adb4876779d9",
+      "package": "nebula-core-1.0.0.c2m"
+    },
+    {
+      "id": "spiroling-aftereffect",
+      "version": "1.0.0",
+      "title": "Spiroling Aftereffect",
+      "description": "A hands-on spirograph instrument that can flow into layered, mirrored mandalas.",
+      "license": "MIT",
+      "supportedPlatforms": [
+        "linux",
+        "windows",
+        "macos"
+      ],
+      "presentation": {
+        "interactive": true,
+        "ambient": false,
+        "wallpaper": false
+      },
+      "sizeBytes": 489277,
+      "sha256": "6055c1cbb6b2208d6d9e61e258f9f43267c5223c46c7b98d57f3adc3a7c0dc1a",
+      "package": "spiroling-aftereffect-1.0.0.c2m"
+    },
+    {
+      "id": "living-fractal-atlas",
+      "version": "1.0.0",
+      "title": "Living Fractal Atlas",
+      "description": "An autonomous shader-driven atlas of shifting fractal forms and palettes.",
+      "license": "MIT",
+      "supportedPlatforms": [
+        "linux",
+        "windows",
+        "macos"
+      ],
+      "presentation": {
+        "interactive": true,
+        "ambient": false,
+        "wallpaper": false
+      },
+      "sizeBytes": 251585,
+      "sha256": "575b11082057b368e685745042a0ccb34431d676a8d96a71e9ddb0c01576e5b1",
+      "package": "living-fractal-atlas-1.0.0.c2m"
     }
   ]
 }

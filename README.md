@@ -7,6 +7,12 @@ curated c2merse catalog, and package archives. Download the beta from the
 Each desktop release includes the catalog, individual `.c2m` packages, source
 and license information, release notes, and `SHA256SUMS`.
 
+## v0.1.0-beta.2 platforms
+
+- Linux x86_64: updated `.deb` installer with Ambient Mode support for Pain-ter.
+  The AppImage is not included in this release because the local AppImage
+  bundler did not complete successfully. Wallpaper Mode remains disabled.
+
 ## v0.1.0-beta.1 platforms
 
 - Linux x86_64: `.deb` and AppImage. AudiOrbits is Linux-only and requires GTK
